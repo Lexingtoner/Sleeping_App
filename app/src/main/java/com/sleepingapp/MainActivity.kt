@@ -1,5 +1,6 @@
 package com.sleepingapp
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -81,6 +82,8 @@ data class SleepCard(val title: String, val subtitle: String)
 
 data class ChatMessage(val fromUser: Boolean, val text: String)
 
+private data class QuickActivity(val title: String, val activityClass: Class<out ComponentActivity>)
+
 @Composable
 fun SleepApp() {
     val navController = rememberNavController()
@@ -160,6 +163,26 @@ private fun HomeScreen(navController: NavHostController) {
                     }
                     IconButton(onClick = { navController.navigate(SleepRoute.Alarm.route) }) {
                         Icon(Icons.Default.Settings, contentDescription = null, tint = Color.White)
+                    }
+                }
+            }
+            item {
+                val quickActivities = listOf(
+                    QuickActivity("Breathing", BreathingActivity::class.java),
+                    QuickActivity("Meditation", MeditationActivity::class.java),
+                    QuickActivity("Tips", SleepTipsActivity::class.java),
+                    QuickActivity("Profile", ProfileActivity::class.java)
+                )
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(quickActivities) { qa ->
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFF172444)),
+                            modifier = Modifier.clickable {
+                                navController.context.startActivity(Intent(navController.context, qa.activityClass))
+                            }
+                        ) {
+                            Text(qa.title, color = Color.White, modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp))
+                        }
                     }
                 }
             }

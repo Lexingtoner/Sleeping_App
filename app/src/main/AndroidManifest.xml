@@ -8,6 +8,10 @@
         android:roundIcon="@android:drawable/ic_menu_compass"
         android:supportsRtl="true"
         android:theme="@style/Theme.SleepingApp">
+        <activity android:name=".BreathingActivity" android:exported="false" />
+        <activity android:name=".MeditationActivity" android:exported="false" />
+        <activity android:name=".SleepTipsActivity" android:exported="false" />
+        <activity android:name=".ProfileActivity" android:exported="false" />
         <activity
             android:name=".MainActivity"
             android:exported="true">
