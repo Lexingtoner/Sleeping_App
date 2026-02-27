@@ -58,6 +58,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -78,11 +79,10 @@ enum class SleepRoute(val route: String) {
     Home("home"), Chat("chat"), CheckIn("checkin"), Stats("stats"), Alarm("alarm"), Sounds("sounds")
 }
 
-data class SleepCard(val title: String, val subtitle: String)
-
-data class ChatMessage(val fromUser: Boolean, val text: String)
-
+private data class SleepCard(val title: String, val subtitle: String)
+private data class ChatMessage(val fromUser: Boolean, val text: String)
 private data class QuickActivity(val title: String, val activityClass: Class<out ComponentActivity>)
+private data class BottomTab(val route: SleepRoute, val label: String, val icon: ImageVector)
 
 @Composable
 fun SleepApp() {
@@ -108,24 +108,28 @@ fun SleepApp() {
 
 @Composable
 private fun SleepBottomBar(navController: NavHostController) {
-    val routes = listOf(SleepRoute.Home, SleepRoute.Stats, SleepRoute.Sounds, SleepRoute.Chat)
+    val tabs = listOf(
+        BottomTab(SleepRoute.Home, "Home", Icons.Default.Home),
+        BottomTab(SleepRoute.Stats, "Stats", Icons.Default.Alarm),
+        BottomTab(SleepRoute.Sounds, "Sounds", Icons.Default.LibraryMusic),
+        BottomTab(SleepRoute.Chat, "Luna", Icons.Default.Chat)
+    )
     val entry by navController.currentBackStackEntryAsState()
     val current = entry?.destination?.route
 
     NavigationBar(containerColor = Color(0xFF08142F)) {
-        routes.forEach { route ->
-            val icon = when (route) {
-                SleepRoute.Home -> Icons.Default.Home
-                SleepRoute.Stats -> Icons.Default.Chat
-                SleepRoute.Sounds -> Icons.Default.LibraryMusic
-                SleepRoute.Chat -> Icons.Default.Settings
-                else -> Icons.Default.Home
-            }
+        tabs.forEach { tab ->
             NavigationBarItem(
-                selected = current == route.route,
-                onClick = { navController.navigate(route.route) },
-                icon = { Icon(icon, contentDescription = route.route) },
-                label = { Text(route.route) }
+                selected = current == tab.route.route,
+                onClick = {
+                    navController.navigate(tab.route.route) {
+                        launchSingleTop = true
+                        restoreState = true
+                        popUpTo(SleepRoute.Home.route) { saveState = true }
+                    }
+                },
+                icon = { Icon(tab.icon, contentDescription = tab.label) },
+                label = { Text(tab.label) }
             )
         }
     }
@@ -142,7 +146,9 @@ private fun GradientBackground(content: @Composable () -> Unit) {
                 )
             )
             .padding(16.dp)
-    ) { content() }
+    ) {
+        content()
+    }
 }
 
 @Composable
@@ -151,6 +157,12 @@ private fun HomeScreen(navController: NavHostController) {
         SleepCard("4-7-8 Breathing", "2 min"),
         SleepCard("Rain on Window", "Sound"),
         SleepCard("Wind Down Story", "10 min")
+    )
+    val quickActivities = listOf(
+        QuickActivity("Breathing", BreathingActivity::class.java),
+        QuickActivity("Meditation", MeditationActivity::class.java),
+        QuickActivity("Tips", SleepTipsActivity::class.java),
+        QuickActivity("Profile", ProfileActivity::class.java)
     )
 
     GradientBackground {
@@ -167,12 +179,6 @@ private fun HomeScreen(navController: NavHostController) {
                 }
             }
             item {
-                val quickActivities = listOf(
-                    QuickActivity("Breathing", BreathingActivity::class.java),
-                    QuickActivity("Meditation", MeditationActivity::class.java),
-                    QuickActivity("Tips", SleepTipsActivity::class.java),
-                    QuickActivity("Profile", ProfileActivity::class.java)
-                )
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(quickActivities) { qa ->
                         Card(
@@ -215,6 +221,15 @@ private fun HomeScreen(navController: NavHostController) {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
                     MetricCard("Sleep Score", "85", "+2%", Modifier.weight(1f))
                     MetricCard("Hours Slept", "7h 12m", "Avg", Modifier.weight(1f))
+                }
+            }
+            item {
+                Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF12203F)), modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        "Luna suggestion: your stress is medium tonight. Try Breathing + Rain sounds for 15 minutes.",
+                        color = Color(0xFFB7C6EA),
+                        modifier = Modifier.padding(14.dp)
+                    )
                 }
             }
             item {
@@ -267,21 +282,11 @@ private fun ChatScreen(navController: NavHostController) {
 
     GradientBackground {
         Column {
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                IconButton(onClick = { navController.navigate(SleepRoute.Home.route) }) { Icon(Icons.Default.ArrowBack, null, tint = Color.White) }
-                Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Luna", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 32.sp)
-                    Text("CALM PRESENCE", color = Color(0xFFA5B4DA))
-                }
-                Spacer(Modifier.width(48.dp))
-            }
+            ScreenHeader(title = "Luna", subtitle = "CALM PRESENCE", onBack = { navController.navigate(SleepRoute.Home.route) })
 
             LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 items(messages) { msg ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = if (msg.fromUser) Arrangement.End else Arrangement.Start
-                    ) {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = if (msg.fromUser) Arrangement.End else Arrangement.Start) {
                         Card(colors = CardDefaults.cardColors(containerColor = if (msg.fromUser) Color(0xFF2261F0) else Color(0xFF1B2847))) {
                             Text(msg.text, color = Color.White, modifier = Modifier.padding(14.dp))
                         }
@@ -320,11 +325,9 @@ private fun CheckInScreen(navController: NavHostController) {
     GradientBackground {
         LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp)) {
             item {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("How was your day?", color = Color.White, fontSize = 40.sp, fontWeight = FontWeight.Bold)
-                    IconButton(onClick = { navController.navigate(SleepRoute.Home.route) }) { Icon(Icons.Default.ArrowBack, null, tint = Color.White) }
-                }
-                Text("Select factors that might affect your sleep tonight.", color = Color(0xFF9BA8CE))
+                ScreenHeader(title = "How was your day?", subtitle = "Select factors that might affect your sleep tonight.", onBack = {
+                    navController.navigate(SleepRoute.Home.route)
+                })
             }
             item {
                 factors.chunked(2).forEach { rowItems ->
@@ -336,9 +339,7 @@ private fun CheckInScreen(navController: NavHostController) {
                                 modifier = Modifier
                                     .weight(1f)
                                     .height(90.dp)
-                                    .clickable {
-                                        if (isSelected) selected.remove(factor) else selected.add(factor)
-                                    }
+                                    .clickable { if (isSelected) selected.remove(factor) else selected.add(factor) }
                             ) {
                                 Box(Modifier.fillMaxSize().padding(12.dp), contentAlignment = Alignment.CenterStart) {
                                     Text(factor, color = Color.White)
@@ -354,12 +355,7 @@ private fun CheckInScreen(navController: NavHostController) {
                 Slider(value = stress.toFloat(), onValueChange = { stress = it.toInt() }, valueRange = 1f..10f)
             }
             item {
-                OutlinedTextField(
-                    value = notes,
-                    onValueChange = { notes = it },
-                    modifier = Modifier.fillMaxWidth().height(120.dp),
-                    placeholder = { Text("Clear your mind here...") }
-                )
+                OutlinedTextField(value = notes, onValueChange = { notes = it }, modifier = Modifier.fillMaxWidth().height(120.dp), placeholder = { Text("Clear your mind here...") })
             }
             item {
                 Button(onClick = { navController.navigate(SleepRoute.Home.route) }, modifier = Modifier.fillMaxWidth()) {
@@ -374,15 +370,7 @@ private fun CheckInScreen(navController: NavHostController) {
 private fun StatsScreen(navController: NavHostController) {
     GradientBackground {
         LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            item {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    IconButton(onClick = { navController.navigate(SleepRoute.Home.route) }) {
-                        Icon(Icons.Default.ArrowBack, null, tint = Color.White)
-                    }
-                    Text("Sleep Statistics", color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Bold)
-                    Spacer(Modifier.width(48.dp))
-                }
-            }
+            item { ScreenHeader(title = "Sleep Statistics", subtitle = "This week", onBack = { navController.navigate(SleepRoute.Home.route) }) }
             item {
                 Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF111D3B)), modifier = Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -422,13 +410,7 @@ private fun AlarmScreen(navController: NavHostController) {
 
     GradientBackground {
         LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            item {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = { navController.navigate(SleepRoute.Home.route) }) { Icon(Icons.Default.ArrowBack, null, tint = Color.White) }
-                    Text("Edit Alarm", color = Color.White, fontSize = 32.sp, fontWeight = FontWeight.Bold)
-                    Text("Save", color = Color(0xFF2A73FF), fontSize = 22.sp)
-                }
-            }
+            item { ScreenHeader(title = "Edit Alarm", subtitle = "Save", onBack = { navController.navigate(SleepRoute.Home.route) }) }
             item {
                 Text("07:30", color = Color(0xFFE9BC4A), fontSize = 86.sp, fontWeight = FontWeight.Bold, modifier = Modifier.align(Alignment.CenterHorizontally))
                 Text("Alarm in 7h 30m", color = Color(0xFF8DA0CB), modifier = Modifier.align(Alignment.CenterHorizontally))
@@ -453,9 +435,7 @@ private fun AlarmScreen(navController: NavHostController) {
                                 .size(42.dp)
                                 .clip(CircleShape)
                                 .background(if (active) Color(0xFF2A73FF) else Color(0xFF1A2545))
-                                .clickable {
-                                    selected = if (active) selected - day else selected + day
-                                },
+                                .clickable { selected = if (active) selected - day else selected + day },
                             contentAlignment = Alignment.Center
                         ) {
                             Text(day.take(1), color = Color.White)
@@ -478,23 +458,25 @@ private fun AlarmScreen(navController: NavHostController) {
 private fun SoundsScreen(navController: NavHostController) {
     val recent = listOf("Heavy Rain", "Deep Sleep", "Forest Night")
     val categories = listOf("Rain", "Forest", "White Noise", "Meditations")
+    var query by rememberSaveable { mutableStateOf("") }
+
+    val filteredRecent = recent.filter { it.contains(query, ignoreCase = true) || query.isBlank() }
 
     GradientBackground {
         LazyColumn(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            item { ScreenHeader(title = "Sound Library", subtitle = "Find your calm", onBack = { navController.navigate(SleepRoute.Home.route) }) }
             item {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = { navController.navigate(SleepRoute.Home.route) }) { Icon(Icons.Default.ArrowBack, null, tint = Color.White) }
-                    Text("Sound Library", color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Bold)
-                    Icon(Icons.Default.Settings, contentDescription = null, tint = Color.White)
-                }
-            }
-            item {
-                OutlinedTextField(value = "", onValueChange = {}, placeholder = { Text("Search sounds, stories...") }, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(
+                    value = query,
+                    onValueChange = { query = it },
+                    placeholder = { Text("Search sounds, stories...") },
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
             item { Text("Recently Played", color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Bold) }
             item {
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    items(recent) { item ->
+                    items(filteredRecent) { item ->
                         Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF172443)), modifier = Modifier.width(180.dp)) {
                             Column(Modifier.padding(14.dp)) {
                                 Text(item, color = Color.White, fontWeight = FontWeight.SemiBold)
@@ -520,5 +502,19 @@ private fun SoundsScreen(navController: NavHostController) {
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun ScreenHeader(title: String, subtitle: String, onBack: () -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+        IconButton(onClick = onBack) {
+            Icon(Icons.Default.ArrowBack, contentDescription = null, tint = Color.White)
+        }
+        Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(title, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 30.sp)
+            Text(subtitle, color = Color(0xFFA5B4DA))
+        }
+        Spacer(Modifier.width(48.dp))
     }
 }
